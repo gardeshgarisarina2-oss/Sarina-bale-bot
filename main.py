@@ -1,15 +1,13 @@
-import os
-import requests
+import instaloader
 
-token = os.environ["BALE_TOKEN"]
-url = f"https://tapi.bale.ai/bot{token}/sendMessage"
+profile = instaloader.Profile.from_username(
+    instaloader.Instaloader().context,
+    "gardeshgari_sarina"
+)
 
-response = requests.post(url, json={
-    "chat_id": "@afsaneh_gardeshgari_sarina",
-    "text": "تست اتصال خودکار سارینا ❤️"
-})
+post = next(profile.get_posts())
 
-print("Status:", response.status_code)
-print("Response:", response.text)
-
-response.raise_for_status()
+print("Post found!")
+print("Code:", post.shortcode)
+print("Video:", post.is_video)
+print("Caption:", post.caption)
