@@ -1,10 +1,13 @@
 import os
+import requests
 
-PROFILE = "gardeshgari_sarina"
+token = os.environ["BALE_TOKEN"]
+url = f"https://tapi.bale.ai/bot{token}/sendMessage"
 
-BALE_TOKEN = os.environ["BALE_TOKEN"]
-BALE_CHANNEL = "@afsaneh_gardeshgari_sarina"
+response = requests.post(url, json={
+    "chat_id": "@afsaneh_gardeshgari_sarina",
+    "text": "تست اتصال خودکار سارینا ❤️"
+})
 
-print("Sarina Bot is ready!")
-print("Instagram:", PROFILE)
-print("Bale channel:", BALE_CHANNEL)
+print(response.status_code)
+print(response.text)
