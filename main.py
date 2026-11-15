@@ -9,5 +9,7 @@ response = requests.post(url, json={
     "text": "تست اتصال خودکار سارینا ❤️"
 })
 
-print(response.status_code)
-print(response.text)
+print("Status:", response.status_code)
+print("Response:", response.text)
+
+response.raise_for_status()
