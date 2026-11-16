@@ -7,11 +7,13 @@ TOKEN = os.environ["BALE_TOKEN"]
 CHANNEL = "@afsaneh_gardeshgari_sarina"
 BASE = f"https://tapi.bale.ai/bot{TOKEN}"
 
+session = requests.Session()
+
 # دریافت پیام‌های جدید
-response = requests.get(
+response = session.get(
     f"{BASE}/getUpdates",
-    params={"offset": 8},
-    timeout=30
+    params={"offset": 8, "timeout": 30},
+    timeout=40
 ).json()
 
 if not response.get("ok"):
@@ -36,12 +38,13 @@ for update in updates:
     if "instagram.com/" not in text:
         continue
 
-    print("New Instagram link found!")
+    print("New Instagram link:", text)
 
     options = {
         "outtmpl": "reel_%(id)s.%(ext)s",
         "format": "best[ext=mp4]/best",
-        "noplaylist": True
+        "noplaylist": True,
+        "retries": 3
     }
 
     with yt_dlp.YoutubeDL(options) as ydl:
@@ -54,16 +57,15 @@ for update in updates:
         or ""
     )[:1024]
 
-    api = f"{BASE}/sendVideo"
     sent = False
 
     for attempt in range(1, 4):
-        print(f"Sending video, attempt {attempt}/3")
+        print(f"Sending video: attempt {attempt}/3")
 
         try:
             with open(video_path, "rb") as video:
-                result = requests.post(
-                    api,
+                result = session.post(
+                    f"{BASE}/sendVideo",
                     data={
                         "chat_id": CHANNEL,
                         "caption": caption
@@ -78,31 +80,28 @@ for update in updates:
                     timeout=(30, 180)
                 )
 
-            print("Bale response:", result.text)
-
             data = result.json()
+            print(data)
 
             if data.get("ok"):
                 print("Video sent successfully!")
                 sent = True
                 break
 
-            print("Bale upload failed:", data)
-
         except Exception as error:
-            print("Upload error:", error)
+            print("Send error:", error)
 
         if attempt < 3:
             time.sleep(5)
 
     if not sent:
-        raise Exception("Video could not be sent after 3 attempts.")
+        raise Exception("Video sending failed.")
 
-# تأیید پیام‌ها بعد از پردازش موفق
-requests.get(
+# تأیید پیام‌ها پس از پردازش موفق
+session.get(
     f"{BASE}/getUpdates",
     params={"offset": last_id + 1},
     timeout=30
 ).raise_for_status()
 
-print("Updates processed successfully!")
+print("All messages processed!")
