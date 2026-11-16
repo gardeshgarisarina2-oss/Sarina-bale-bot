@@ -9,10 +9,9 @@ BASE = f"https://tapi.bale.ai/bot{TOKEN}"
 
 session = requests.Session()
 
-# دریافت پیام‌های جدید
+# دریافت پیام‌های تأییدنشده، بدون شماره ثابت
 response = session.get(
     f"{BASE}/getUpdates",
-    params={"offset": 8, "timeout": 30},
     timeout=40
 ).json()
 
@@ -25,10 +24,14 @@ if not updates:
     print("No new messages.")
     exit()
 
-last_id = max(item["update_id"] for item in updates)
+last_id = max(u["update_id"] for u in updates)
 
 for update in updates:
     message = update.get("message", {})
+    
+    if not message:
+        continue
+
     chat = message.get("chat", {})
     text = message.get("text", "").strip()
 
@@ -38,7 +41,7 @@ for update in updates:
     if "instagram.com/" not in text:
         continue
 
-    print("New Instagram link:", text)
+    print("New Instagram link found!")
 
     options = {
         "outtmpl": "reel_%(id)s.%(ext)s",
@@ -60,7 +63,7 @@ for update in updates:
     sent = False
 
     for attempt in range(1, 4):
-        print(f"Sending video: attempt {attempt}/3")
+        print(f"Sending attempt {attempt}/3")
 
         try:
             with open(video_path, "rb") as video:
@@ -84,20 +87,20 @@ for update in updates:
             print(data)
 
             if data.get("ok"):
-                print("Video sent successfully!")
                 sent = True
+                print("Video sent successfully!")
                 break
 
         except Exception as error:
-            print("Send error:", error)
+            print("Upload error:", error)
 
         if attempt < 3:
             time.sleep(5)
 
     if not sent:
-        raise Exception("Video sending failed.")
+        raise Exception("Video sending failed")
 
-# تأیید پیام‌ها پس از پردازش موفق
+# تأیید پیام‌ها فقط پس از ارسال موفق
 session.get(
     f"{BASE}/getUpdates",
     params={"offset": last_id + 1},
