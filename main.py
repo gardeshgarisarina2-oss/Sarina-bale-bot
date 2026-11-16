@@ -1,14 +1,13 @@
 import os
 import requests
 import yt_dlp
-import glob
+import time
 
 TOKEN = os.environ["BALE_TOKEN"]
 CHANNEL = "@afsaneh_gardeshgari_sarina"
-
 BASE = f"https://tapi.bale.ai/bot{TOKEN}"
 
-# پیام‌های قدیمی تا شماره ۷ نادیده گرفته می‌شوند
+# دریافت پیام‌های جدید
 response = requests.get(
     f"{BASE}/getUpdates",
     params={"offset": 8},
@@ -56,24 +55,50 @@ for update in updates:
     )[:1024]
 
     api = f"{BASE}/sendVideo"
+    sent = False
 
-    with open(video_path, "rb") as video:
-        result = requests.post(
-            api,
-            data={
-                "chat_id": CHANNEL,
-                "caption": caption
-            },
-            files={"video": video},
-            timeout=300
-        ).json()
+    for attempt in range(1, 4):
+        print(f"Sending video, attempt {attempt}/3")
 
-    if not result.get("ok"):
-        raise Exception(result)
+        try:
+            with open(video_path, "rb") as video:
+                result = requests.post(
+                    api,
+                    data={
+                        "chat_id": CHANNEL,
+                        "caption": caption
+                    },
+                    files={
+                        "video": (
+                            os.path.basename(video_path),
+                            video,
+                            "video/mp4"
+                        )
+                    },
+                    timeout=(30, 180)
+                )
 
-    print("Video sent successfully!")
+            print("Bale response:", result.text)
 
-# فقط بعد از پردازش موفق، پیام‌ها تأیید می‌شوند
+            data = result.json()
+
+            if data.get("ok"):
+                print("Video sent successfully!")
+                sent = True
+                break
+
+            print("Bale upload failed:", data)
+
+        except Exception as error:
+            print("Upload error:", error)
+
+        if attempt < 3:
+            time.sleep(5)
+
+    if not sent:
+        raise Exception("Video could not be sent after 3 attempts.")
+
+# تأیید پیام‌ها بعد از پردازش موفق
 requests.get(
     f"{BASE}/getUpdates",
     params={"offset": last_id + 1},
