@@ -1,13 +1,14 @@
-import instaloader
+import yt_dlp
 
-profile = instaloader.Profile.from_username(
-    instaloader.Instaloader().context,
-    "gardeshgari_sarina"
-)
+url = "https://www.instagram.com/reel/DadQ2nyssJL/"
 
-post = next(profile.get_posts())
+options = {
+    "outtmpl": "reel.%(ext)s",
+    "format": "best",
+    "noplaylist": True
+}
 
-print("Post found!")
-print("Code:", post.shortcode)
-print("Video:", post.is_video)
-print("Caption:", post.caption)
+with yt_dlp.YoutubeDL(options) as ydl:
+    ydl.download([url])
+
+print("Video downloaded successfully!")
