@@ -1,12 +1,18 @@
-
 name: Sarina Instagram Bot
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "* * * * *"
+
+concurrency:
+  group: sarina-bale-bot
+  cancel-in-progress: false
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Checkout
         uses: actions/checkout@v4
