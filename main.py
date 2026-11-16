@@ -1,69 +1,83 @@
 import os
-import glob
 import requests
 import yt_dlp
+import glob
 
 TOKEN = os.environ["BALE_TOKEN"]
 CHANNEL = "@afsaneh_gardeshgari_sarina"
 
-# دریافت پیام‌های ربات
-url = f"https://tapi.bale.ai/bot{TOKEN}/getUpdates"
-data = requests.get(url, timeout=30).json()
+BASE = f"https://tapi.bale.ai/bot{TOKEN}"
 
-if not data.get("ok"):
-    raise Exception(data)
+# پیام‌های قدیمی تا شماره ۷ نادیده گرفته می‌شوند
+response = requests.get(
+    f"{BASE}/getUpdates",
+    params={"offset": 8},
+    timeout=30
+).json()
 
-updates = data.get("result", [])
+if not response.get("ok"):
+    raise Exception(response)
 
-# پیدا کردن آخرین لینک اینستاگرام در پیام خصوصی
-reel_url = None
+updates = response.get("result", [])
+
+if not updates:
+    print("No new messages.")
+    exit()
+
+last_id = max(item["update_id"] for item in updates)
 
 for update in updates:
     message = update.get("message", {})
     chat = message.get("chat", {})
-    text = message.get("text", "")
+    text = message.get("text", "").strip()
 
-    if chat.get("type") == "private" and "instagram.com/" in text:
-        reel_url = text.strip()
+    if chat.get("type") != "private":
+        continue
 
-if not reel_url:
-    print("No Instagram link found.")
-    exit()
+    if "instagram.com/" not in text:
+        continue
 
-print("Instagram link found!")
+    print("New Instagram link found!")
 
-# دانلود ویدئو
-options = {
-    "outtmpl": "reel.%(ext)s",
-    "format": "best[ext=mp4]/best",
-    "noplaylist": True
-}
+    options = {
+        "outtmpl": "reel_%(id)s.%(ext)s",
+        "format": "best[ext=mp4]/best",
+        "noplaylist": True
+    }
 
-with yt_dlp.YoutubeDL(options) as ydl:
-    info = ydl.extract_info(reel_url, download=True)
+    with yt_dlp.YoutubeDL(options) as ydl:
+        info = ydl.extract_info(text, download=True)
+        video_path = ydl.prepare_filename(info)
 
-files = glob.glob("reel.*")
+    caption = (
+        info.get("description")
+        or info.get("title")
+        or ""
+    )[:1024]
 
-if not files:
-    raise Exception("Video not found!")
+    api = f"{BASE}/sendVideo"
 
-video_path = files[0]
-caption = (info.get("description") or info.get("title") or "")[:1024]
+    with open(video_path, "rb") as video:
+        result = requests.post(
+            api,
+            data={
+                "chat_id": CHANNEL,
+                "caption": caption
+            },
+            files={"video": video},
+            timeout=300
+        ).json()
 
-# ارسال به کانال بله
-api = f"https://tapi.bale.ai/bot{TOKEN}/sendVideo"
+    if not result.get("ok"):
+        raise Exception(result)
 
-with open(video_path, "rb") as video:
-    response = requests.post(
-        api,
-        data={"chat_id": CHANNEL, "caption": caption},
-        files={"video": video},
-        timeout=300
-    )
+    print("Video sent successfully!")
 
-result = response.json()
+# فقط بعد از پردازش موفق، پیام‌ها تأیید می‌شوند
+requests.get(
+    f"{BASE}/getUpdates",
+    params={"offset": last_id + 1},
+    timeout=30
+).raise_for_status()
 
-if not result.get("ok"):
-    raise Exception(result)
-
-print("Video sent to Bale successfully!")
+print("Updates processed successfully!")
