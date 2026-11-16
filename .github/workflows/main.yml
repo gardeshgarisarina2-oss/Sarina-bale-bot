@@ -3,7 +3,7 @@ name: Sarina Instagram Bot
 on:
   workflow_dispatch:
   schedule:
-    - cron: "* * * * *"
+    - cron: "*/5 * * * *"
 
 concurrency:
   group: sarina-bale-bot
